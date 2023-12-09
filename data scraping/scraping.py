@@ -17,7 +17,7 @@ IDlist = {
     '2022-2023' : range(1640674, 1641054)
 }
 
-csv_file = 'D:/hust/20231/ds/project/pregame_data/pregame_data.csv'
+csv_file = 'pregame_data/pregame_data.csv'
 
 keylist = ['match_id', 'date', 'home_team', 'away_team', 'home_team_id', 'away_team_id', 'home_team_elo', 'away_team_elo']
 
@@ -46,7 +46,7 @@ with open(csv_file, 'a', newline='') as file:
 
             event_data = data['events']
             df = pd.DataFrame(event_data)
-            df.to_csv('D:/hust/20231/ds/project/event_data/'+matchID+'.csv', index=False)
+            df.to_csv('event_data/'+matchID+'.csv', index=False)
 
             date = data['startTime'][:-9]
             ddate = datetime.strptime(date, '%Y-%m-%d')
