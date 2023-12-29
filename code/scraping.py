@@ -8,9 +8,9 @@ import csv
 from io import StringIO
 import pandas as pd
 from datetime import datetime, timedelta
-PROJ_DIR = os.path.dirname(os.path.abspath(''))
+PROJ_DIR = os.path.abspath('')
 
-#urls of EPL matches from the last 5 seasons
+# urls of EPL matches from the last 5 seasons
 IDlist = {
     '2018-2019' : range(1284741, 1285121),
     '2019-2020' : range(1375927, 1376307),
@@ -19,8 +19,10 @@ IDlist = {
     '2022-2023' : range(1640674, 1641054)
 }
 
+# path fo pregame data
 csv_file = os.path.join(PRJ_DIR, 'data', 'pregame_data', 'pregame_data.csv')
 
+# attributes for pregame data
 keylist = ['match_id', 'date', 'home_team', 'away_team', 'home_team_id', 'away_team_id', 'home_team_elo', 'away_team_elo']
 
 with open(csv_file, 'a', newline='') as file:
@@ -31,11 +33,15 @@ with open(csv_file, 'a', newline='') as file:
 
     for season, urls in IDlist.items():
         for matchID in urls:
+            # get the url of the live match centre in Whoscored
             matchID = str(matchID)
             url = 'https://1xbet.whoscored.com/Matches/'+matchID+'/Live'
+
+            # open web driver on the url
             driver = webdriver.Chrome()
             driver.get(url)
 
+            # get the JSON data
             data_xpath = '/html/body/div[4]/script[1]'
             wait = WebDriverWait(driver, 300)
             data_element = wait.until(EC.presence_of_element_located((By.XPATH, data_xpath)))
@@ -46,20 +52,24 @@ with open(csv_file, 'a', newline='') as file:
             data = data[start_index+17:end_index-14]
             data = json.loads(data)
 
+            # extract event data
             event_data = data['events']
             df = pd.DataFrame(event_data)
-            df.to_csv('D:/hust/20231/ds/project/test/event_data/'+matchID+'.csv', index=False)
+            df.to_csv(os.path.join(PRJ_DIR, 'data', 'event_data', matchID+'.csv'), index=False)
 
+            # get the match date to crawl ELO rating data
             date = data['startTime'][:-9]
             ddate = datetime.strptime(date, '%Y-%m-%d')
 
             previous_day = ddate - timedelta(days=1)
             predate = previous_day.strftime('%Y-%m-%d')
 
+            # get data from clubelo api
             r = requests.get('http://api.clubelo.com/'+predate)
             elo_data = StringIO(r.text)
             elo = pd.read_csv(elo_data, sep=",")
-            
+
+            # get team name
             name_xpath = '/html/body/div[4]/div[3]/div[1]/div[2]/table/tbody/tr[1]'
             wait = WebDriverWait(driver, 300)
             name_element = wait.until(EC.presence_of_element_located((By.XPATH, name_xpath)))
@@ -69,6 +79,8 @@ with open(csv_file, 'a', newline='') as file:
             end_index = name.find('</a>')
             start_index = name[:end_index].rfind('>')
             home_team_name = name[start_index+1:end_index]
+
+            # some team names need to be synchronized from Whoscored to clubelo
             if home_team_name == 'Man Utd': home_team_name = 'Man United'
             if home_team_name == 'WBA': home_team_name = 'West Brom'
             if home_team_name == 'Sheff Utd': home_team_name = 'Sheffield United'
@@ -81,9 +93,11 @@ with open(csv_file, 'a', newline='') as file:
             if away_team_name == 'Sheff Utd': away_team_name = 'Sheffield United'
             if away_team_name == 'Nottingham Forest': away_team_name = 'Forest'
 
+            # get elo ratings data
             home_team_elo = elo.loc[elo['Club'] == home_team_name, 'Elo'].values[0]
             away_team_elo = elo.loc[elo['Club'] == away_team_name, 'Elo'].values[0]
 
+            # store pregame data
             instance_data = {
                 'match_id' : matchID,
                 'date' : date,
